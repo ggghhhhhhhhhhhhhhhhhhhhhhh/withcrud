@@ -142,8 +142,8 @@ def home_page():
         st.subheader("Lost Items")
         show_lost_items(admin_view=False)
         
-        st.subheader("Found Items")
-        show_found_items(admin_view=False)
+       # st.subheader("Found Items")
+       # show_found_items(admin_view=False)
         
     else:
         st.info("Please login to view items.")
