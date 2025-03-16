@@ -1,8 +1,9 @@
 import streamlit as st
 import sqlite3
+from sqlite3 import Connection
 
 # Database Setup
-def init_db(conn):
+def init_db(conn: Connection):
     conn.execute('''CREATE TABLE IF NOT EXISTS users (
         username TEXT PRIMARY KEY,
         password TEXT NOT NULL,
@@ -19,10 +20,11 @@ def init_db(conn):
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         finder_name TEXT,
         item_desc TEXT,
-        contact_info TEXT
+        found_location TEXT
     )''')
     conn.commit()
 
+# Connect to SQLite Database
 def get_conn():
     return sqlite3.connect('recoverease.db', timeout=10)
 
@@ -51,10 +53,10 @@ def report_lost_item(owner_name, item_desc, last_seen_location):
     conn.commit()
     conn.close()
 
-def report_found_item(finder_name, item_desc, contact_info):
+def report_found_item(finder_name, item_desc, found_location):
     conn = get_conn()
-    conn.execute('INSERT INTO found_items (finder_name, item_desc, contact_info) VALUES (?, ?, ?)',
-                 (finder_name, item_desc, contact_info))
+    conn.execute('INSERT INTO found_items (finder_name, item_desc, found_location) VALUES (?, ?, ?)',
+                 (finder_name, item_desc, found_location))
     conn.commit()
     conn.close()
 
@@ -83,75 +85,9 @@ def delete_found_item(item_id):
     conn.commit()
     conn.close()
 
-# Add Custom CSS for Styling
-def add_custom_css():
-    st.markdown("""
-        <style>
-            body {
-                background-color: #eaf4ff;
-                font-family: Arial, sans-serif;
-            }
-            .main {
-                background-color: white;
-                padding: 20px;
-                border-radius: 10px;
-                box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
-            }
-            .navbar {
-                background-color: black;
-                padding: 10px;
-                text-align: center;
-            }
-            .navbar a {
-                color: white;
-                text-decoration: none;
-                margin: 0 15px;
-                font-weight: bold;
-            }
-            .navbar a:hover {
-                color: #00bfff;
-            }
-            .stButton button {
-                background-color: #007bff !important;
-                color: white !important;
-                border-radius: 5px !important;
-                border: none !important;
-            }
-            .stButton button:hover {
-                background-color: #0056b3 !important;
-            }
-            table {
-                width: 100%;
-                border-collapse: collapse;
-                margin-bottom: 20px;
-            }
-            th, td {
-                border: 1px solid #ddd;
-                padding: 8px;
-                text-align: left;
-            }
-            th {
-                background-color: #007bff;
-                color: white;
-            }
-        </style>
-    """, unsafe_allow_html=True)
-
-# Navbar Function
-def navbar():
-    st.markdown("""
-        <div class="navbar">
-            <a href="/">HOME</a>
-            <a href="/report-lost">REPORT LOST ITEM</a>
-            <a href="/report-found">REPORT FOUND ITEM</a>
-            <a href="/admin">ADMIN PANEL</a>
-            <a href="/logout">LOGOUT</a>
-        </div>
-        """, unsafe_allow_html=True)
-
 # Streamlit App Pages
 def main():
-    add_custom_css()
+    st.set_page_config(page_title="RecoverEase", page_icon="🔍")
 
     if "logged_in" not in st.session_state:
         st.session_state["logged_in"] = False
@@ -163,20 +99,153 @@ def main():
     choice = st.sidebar.selectbox("Menu", menu)
 
     if choice == "Home":
-        navbar()
         home_page()    
         
     elif choice == "Login":
-        navbar()
         login_page()
 
     elif choice == "Register":
-        navbar()
         register_page()
 
-# Page Definitions
+    elif choice == "Report Lost":
+        if st.session_state["logged_in"]:
+            report_lost_page()
+        else:
+            st.warning("Please login first.")
 
-### Home Page ###
+    elif choice == "Report Found":
+        if st.session_state["logged_in"]:
+            report_found_page()
+        else:
+            st.warning("Please login first.")
+
+    elif choice == "Admin":
+        if st.session_state["is_admin"]:
+            admin_page()
+        else:
+            st.warning("Admin access required.")
+
+    elif choice == "Logout":
+        st.session_state["logged_in"] = False
+        st.session_state["is_admin"] = False
+        st.session_state["username"] = ""
+        st.success("Logged out successfully.")
+
+# Individual Page Definitions
+
 def home_page():
-   pass
+    st.title("RecoverEase - Home")
+    
+    if st.session_state["logged_in"]:
+        st.success(f"Welcome {st.session_state['username']}!")
+        
+        st.subheader("Lost Items")
+        show_lost_items(admin_view=False)
+        
+        st.subheader("Found Items")
+        show_found_items(admin_view=False)
+        
+    else:
+        st.info("Please login to view items.")
+
+def login_page():
+    st.title("Login")
+    
+    username = st.text_input("Username")
+    password = st.text_input("Password", type="password")
+
+    if st.button("Login"):
+        user = check_user(username, password)
+        
+        if user:
+            # Fix: Explicitly cast is_admin to boolean
+            st.session_state["logged_in"] = True
+            st.session_state["is_admin"] = bool(user[2])
+            st.session_state["username"] = username
+            st.success(f"Welcome back {username}!")
+            
+            # Debugging output for admin recognition
+            if bool(user[2]):
+                print(f"Admin login successful for {username}")
+            
+        else:
+            st.error("Invalid credentials.")
+
+def register_page():
+    st.title("Register")
+    
+    username = st.text_input("New Username")
+    
+    password1 = st.text_input("Password", type="password")
+    
+    password2 = st.text_input("Confirm Password", type="password")
+
+    if password1 == password2 and st.button("Register"):
+        
+        register_user(username, password1)
+        
+        st.success(f"User {username} registered successfully.")
+        
+def report_lost_page():
+  st.title("Report Lost Item")
+  owner_name=st.text_input("Owner Name")
+  item_desc=st.text_input("Item Description")
+  last_seen=st.text_input("Last Seen Location")
+
+  if(st.button("Submit")):
+      report_lost_item(owner_name,item_desc,last_seen)
+      st.success("Lost item reported successfully!")
+
+def report_found_page():
+  st.title("Report Found Item")
+  finder_name=st.text_input("Finder Name")
+  item_desc=st.text_input("Item Description")
+  found_loc=st.text_input("Found Location")
+
+  if(st.button("Submit")):
+      report_found_item(finder_name,item_desc,found_loc)
+      st.success("Found item reported successfully!")
+
+def admin_page():
+  # Admin Dashboard displaying tables
+  st.title(f"Admin Dashboard - {st.session_state['username']}")
+  
+  # Display Lost Items Table
+  show_lost_items(admin_view=True)
+  
+  # Display Found Items Table
+  show_found_items(admin_view=True)
+
+def show_lost_items(admin_view=False):
+  items=fetch_lost_items()
+  for item in items:
+      cols=st.columns([2,2,2,1])
+      cols[0].write(item[1])
+      cols[1].write(item[2])
+      cols[2].write(item[3])
+      cols[3].write(item[4])
+      if admin_view and cols[3].button(f"Delete Lost #{item[0]}"):
+          delete_lost_item(item[0])
+          # Replace deprecated experimental_rerun with rerun
+          st.rerun()
+
+def show_found_items(admin_view=False):
+  items=fetch_found_items()
+  for item in items:
+      cols=st.columns([2,2,2])
+      cols[0].write(item[1])
+      cols[1].write(item[2])
+      cols[2].write(item[3])
+      if admin_view and cols[2].button(f"Delete Found #{item[0]}"):
+          delete_found_item(item[0])
+          # Replace deprecated experimental_rerun with rerun
+          st.rerun()
+
+if __name__=="__main__":
+   init_db(get_conn())
+   # Create admin user with username='admin' and password='admin'
+   register_user('admin', 'admin', is_admin=1)
+   main()
+
+
 
