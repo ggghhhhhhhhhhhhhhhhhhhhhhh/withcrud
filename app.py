@@ -217,17 +217,24 @@ def admin_page():
 
 def show_lost_items(admin_view=False):
   items=fetch_lost_items()
-  for item in items:
-      cols=st.columns([2,2,2,1])
-      cols[0].write(item[1])
-      cols[1].write(item[2])
-      cols[2].write(item[3])
-      cols[3].write(item[4])
-      if admin_view and cols[3].button(f"Delete Lost #{item[0]}"):
+    if items:
+        st.write("""<table><tr><th>Owner Name</th><th>Description</th><th>Last Seen Location</th><th>Status</th><th>Action</th></tr>""", unsafe_allow_html=True)
+        for item in items:
+           cols=st.columns([2,2,2,1])
+           cols[0].write(item[1])
+           cols[1].write(item[2])
+           cols[2].write(item[3])
+           cols[3].write(item[4])
+      
+        if admin_view and cols[3].button(f"Delete Lost #{item[0]}"):
           delete_lost_item(item[0])
           # Replace deprecated experimental_rerun with rerun
           st.rerun()
+    else:
+        st.write("No lost items reported yet.")
+        
 
+  
 def show_found_items(admin_view=False):
   items=fetch_found_items()
   for item in items:
