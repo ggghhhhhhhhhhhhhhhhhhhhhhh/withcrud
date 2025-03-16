@@ -53,6 +53,7 @@ def report_lost_item(owner_name, item_desc, last_seen_location):
     conn.commit()
     conn.close()
 
+
 def report_found_item(finder_name, item_desc, found_location):
     conn = get_conn()
     conn.execute('INSERT INTO found_items (finder_name, item_desc, found_location) VALUES (?, ?, ?)',
