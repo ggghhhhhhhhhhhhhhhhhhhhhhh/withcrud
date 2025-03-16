@@ -2,7 +2,7 @@ import streamlit as st
 import sqlite3
 from sqlite3 import Connection
 
-# Initialize Database
+# Database Setup
 def init_db(conn: Connection):
     conn.execute('''CREATE TABLE IF NOT EXISTS users (
         username TEXT PRIMARY KEY,
@@ -24,25 +24,28 @@ def init_db(conn: Connection):
     )''')
     conn.commit()
 
-# Database connection helper
+# Connect to SQLite Database with timeout to prevent locks
 def get_conn():
-    return sqlite3.connect('recoverease.db')
+    return sqlite3.connect('recoverease.db', timeout=10)
 
-# User registration function
+# User Functions
 def register_user(username, password, is_admin=0):
     conn = get_conn()
-    conn.execute('INSERT INTO users (username, password, is_admin) VALUES (?, ?, ?)', (username, password, is_admin))
-    conn.commit()
-    conn.close()
+    try:
+        conn.execute('INSERT INTO users (username, password, is_admin) VALUES (?, ?, ?)', (username, password, is_admin))
+        conn.commit()
+    except sqlite3.IntegrityError:
+        pass  # User already exists
+    finally:
+        conn.close()
 
-# User login check function
 def check_user(username, password):
     conn = get_conn()
     user = conn.execute('SELECT * FROM users WHERE username=? AND password=?', (username, password)).fetchone()
     conn.close()
     return user
 
-# Reporting lost items
+# Lost & Found Item Functions
 def report_lost_item(owner_name, item_desc, last_seen_location):
     conn = get_conn()
     conn.execute('INSERT INTO lost_items (owner_name, item_desc, last_seen_location) VALUES (?, ?, ?)',
@@ -50,7 +53,6 @@ def report_lost_item(owner_name, item_desc, last_seen_location):
     conn.commit()
     conn.close()
 
-# Reporting found items
 def report_found_item(finder_name, item_desc, found_location):
     conn = get_conn()
     conn.execute('INSERT INTO found_items (finder_name, item_desc, found_location) VALUES (?, ?, ?)',
@@ -58,7 +60,6 @@ def report_found_item(finder_name, item_desc, found_location):
     conn.commit()
     conn.close()
 
-# Fetching items from database
 def fetch_lost_items():
     conn = get_conn()
     items = conn.execute('SELECT * FROM lost_items').fetchall()
@@ -71,7 +72,7 @@ def fetch_found_items():
     conn.close()
     return items
 
-# Deleting items from database
+# Delete Items from Database
 def delete_lost_item(item_id):
     conn = get_conn()
     conn.execute('DELETE FROM lost_items WHERE id=?', (item_id,))
@@ -84,7 +85,7 @@ def delete_found_item(item_id):
     conn.commit()
     conn.close()
 
-# Streamlit App Main Functionality
+# Streamlit App Pages
 def main():
     st.set_page_config(page_title="RecoverEase", page_icon="🔍")
 
@@ -130,7 +131,7 @@ def main():
         st.session_state["username"] = ""
         st.success("Logged out successfully.")
 
-# Page Functions Definitions
+# Individual Page Definitions
 
 def home_page():
     st.title("RecoverEase - Home")
@@ -157,11 +158,15 @@ def login_page():
         user = check_user(username, password)
         
         if user:
+            # Fix: Explicitly cast is_admin to boolean
             st.session_state["logged_in"] = True
-            # Correctly cast is_admin to boolean here:
             st.session_state["is_admin"] = bool(user[2])
             st.session_state["username"] = username
             st.success(f"Welcome back {username}!")
+            
+            # Debugging output for admin recognition
+            if bool(user[2]):
+                print(f"Admin login successful for {username}")
             
         else:
             st.error("Invalid credentials.")
@@ -202,8 +207,13 @@ def report_found_page():
       st.success("Found item reported successfully!")
 
 def admin_page():
+  # Admin Dashboard displaying tables
   st.title(f"Admin Dashboard - {st.session_state['username']}")
+  
+  # Display Lost Items Table
   show_lost_items(admin_view=True)
+  
+  # Display Found Items Table
   show_found_items(admin_view=True)
 
 def show_lost_items(admin_view=False):
@@ -232,8 +242,6 @@ def show_found_items(admin_view=False):
 if __name__=="__main__":
    init_db(get_conn())
    # Create admin user with username='admin' and password='admin'
-   try:
-       register_user('admin', 'admin', is_admin=1)
-   except sqlite3.IntegrityError:
-       pass # Admin already exists
+   register_user('admin', 'admin', is_admin=1)
    main()
+
