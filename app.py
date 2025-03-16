@@ -215,25 +215,18 @@ def admin_page():
   # Display Found Items Table
   show_found_items(admin_view=True)
 
-def show_lost_items():
-    items = fetch_lost_items()
-    if items:
-        st.write("""<table><tr><th>Owner Name</th><th>Description</th><th>Last Seen Location</th><th>Status</th><th>Action</th></tr>""", unsafe_allow_html=True)
-        
-        for item in items:
-            status = item[4]
-            action_button = ""
-            if status == "Lost":
-                # Add a button with a unique key to mark as found
-                if st.button(f"Mark as Found", key=f"mark_found_{item[0]}"):
-                    update_lost_item_status(item[0])
-                    st.success(f"Marked item ID {item[0]} as found!")
-
-            st.write(f"""<tr><td>{item[1]}</td><td>{item[2]}</td><td>{item[3]}</td><td>{status}</td><td>{action_button}</td></tr>""", unsafe_allow_html=True)
-            
-        st.write("</table>", unsafe_allow_html=True)
-    else:
-        st.write("No lost items reported yet.")
+def show_lost_items(admin_view=False):
+  items=fetch_lost_items()
+  for item in items:
+      cols=st.columns([2,2,2,1])
+      cols[0].write(item[1])
+      cols[1].write(item[2])
+      cols[2].write(item[3])
+      cols[3].write(item[4])
+      if admin_view and cols[3].button(f"Delete Lost #{item[0]}"):
+          delete_lost_item(item[0])
+          # Replace deprecated experimental_rerun with rerun
+          st.rerun()
   
 def show_found_items(admin_view=False):
   items=fetch_found_items()
