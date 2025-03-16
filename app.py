@@ -218,6 +218,7 @@ def admin_page():
 def show_lost_items(admin_view=False):
   items=fetch_lost_items()
   for item in items:
+      st.write("""<table><tr><th>Owner Name</th><th>Description</th><th>Last Seen Location</th><th>Status</th><th>Action</th></tr>""", unsafe_allow_html=True)
       cols=st.columns([2,2,2,1])
       cols[0].write(item[1])
       cols[1].write(item[2])
