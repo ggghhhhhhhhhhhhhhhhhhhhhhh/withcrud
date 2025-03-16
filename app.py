@@ -173,19 +173,17 @@ def login_page():
 
 def register_page():
     st.title("Register")
-    
-    username = st.text_input("New Username")
-    
-    password1 = st.text_input("Password", type="password")
-    
-    password2 = st.text_input("Confirm Password", type="password")
 
-    if password1 == password2 and st.button("Register"):
-        
-        register_user(username, password1)
-        
+    username = st.text_input("Enter Username")
+    password = st.text_input("Enter Password", type="password")
+    confirm_password = st.text_input("Confirm Password", type="password")
+
+    if password == confirm_password and st.button("Register"):
+        register_user(username, password)
         st.success(f"User {username} registered successfully.")
-        
+    elif st.button("Register"):
+        st.error("Passwords do not match!")
+
 def report_lost_page():
   st.title("Report Lost Item")
   owner_name=st.text_input("Owner Name")
