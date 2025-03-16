@@ -24,7 +24,7 @@ def init_db(conn: Connection):
     )''')
     conn.commit()
 
-# Connect to SQLite Database with timeout to prevent locks
+# Connect to SQLite Database
 def get_conn():
     return sqlite3.connect('recoverease.db', timeout=10)
 
@@ -226,7 +226,8 @@ def show_lost_items(admin_view=False):
       cols[3].write(item[4])
       if admin_view and cols[3].button(f"Delete Lost #{item[0]}"):
           delete_lost_item(item[0])
-          st.experimental_rerun()
+          # Replace deprecated experimental_rerun with rerun
+          st.rerun()
 
 def show_found_items(admin_view=False):
   items=fetch_found_items()
@@ -237,7 +238,8 @@ def show_found_items(admin_view=False):
       cols[2].write(item[3])
       if admin_view and cols[2].button(f"Delete Found #{item[0]}"):
           delete_found_item(item[0])
-          st.experimental_rerun()
+          # Replace deprecated experimental_rerun with rerun
+          st.rerun()
 
 if __name__=="__main__":
    init_db(get_conn())
